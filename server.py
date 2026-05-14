@@ -700,11 +700,14 @@ def health():
     return jsonify({'status': 'ok', 'version': '2.0.0'})
 
 
+# ── STARTUP ───────────────────────────────────────────────────────────
+# Called at import time so gunicorn also initializes the database
+init_db()
+
 # ── RUN ───────────────────────────────────────────────────────────────
 if __name__ == '__main__':
-    init_db()
     port = int(os.environ.get('PORT', 5000))
     print(f"\n🌿 WEETALSHI on http://localhost:{port}")
     print("🔑 Admin: admin123")
     print("👤 Demo: agent1 to agent5\n")
-    app.run(debug=True, host='0.0.0.0', port=port)
+    app.run(debug=False, host='0.0.0.0', port=port)
