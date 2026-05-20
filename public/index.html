@@ -331,6 +331,73 @@ td{padding:10px 12px;vertical-align:middle;}
           </div>
         </div>
 
+        <!-- ── GUARDIAN ── -->
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Guardian Type <span class="required">*</span></label>
+            <select class="form-select" id="reg-guardian-type">
+              <option value="father">Father</option>
+              <option value="husband">Husband</option>
+              <option value="other">Other Guardian</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Guardian Name <span class="required">*</span></label>
+            <input type="text" class="form-input" id="reg-guardian-name" placeholder="Father / Husband name" oninput="clearErr('reg-guardian-name')">
+            <div class="field-error" id="err-reg-guardian-name">Guardian name required</div>
+          </div>
+        </div>
+
+        <!-- ── ADDRESS ── -->
+        <div class="form-group">
+          <label class="form-label">Address</label>
+          <input type="text" class="form-input" id="reg-address" placeholder="House / Street / Colony">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">City</label>
+            <input type="text" class="form-input" id="reg-city" placeholder="City">
+          </div>
+          <div class="form-group">
+            <label class="form-label">State</label>
+            <input type="text" class="form-input" id="reg-state" placeholder="State">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pincode</label>
+          <input type="text" class="form-input" id="reg-pincode" placeholder="6-digit pincode" maxlength="6">
+        </div>
+
+        <!-- ── FARM DETAILS ── -->
+        <div style="padding:10px 12px;background:rgba(13,148,136,0.08);border:1px solid rgba(13,148,136,0.3);border-radius:8px;margin-bottom:10px;font-size:12px;font-weight:600;color:#2dd4bf">🌾 Farm Details (optional)</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Farm Land (Acres)</label>
+            <input type="number" class="form-input" id="reg-farm-acres" placeholder="e.g. 2.5" min="0" step="0.1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Main Crop</label>
+            <input type="text" class="form-input" id="reg-farm-crop" placeholder="e.g. Wheat, Rice">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Farm Location / Village</label>
+          <input type="text" class="form-input" id="reg-farm-location" placeholder="Village / Tehsil / District">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Latitude</label>
+            <input type="number" class="form-input" id="reg-farm-lat" placeholder="e.g. 26.9124" step="any" min="-90" max="90">
+            <div class="form-hint">GPS latitude of farm land</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Longitude</label>
+            <input type="number" class="form-input" id="reg-farm-lng" placeholder="e.g. 75.7873" step="any" min="-180" max="180">
+            <div class="form-hint">GPS longitude of farm land</div>
+          </div>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" style="margin-bottom:10px;font-size:12px" onclick="detectFarmLocation()">📍 Use My Current Location</button>
+
         <!-- ── REFERRAL CODE (sponsor's mobile) ── -->
         <div class="form-group">
           <label class="form-label">Referral Code <span style="color:var(--text-dim)">(optional)</span></label>
@@ -569,6 +636,17 @@ async function registerAgent(){
   const pan=document.getElementById('reg-pan').value.trim();
   const referralCode=document.getElementById('reg-referral').value.trim();
   const password=document.getElementById('reg-password').value;
+  const guardian_type=document.getElementById('reg-guardian-type').value;
+  const guardian_name=document.getElementById('reg-guardian-name').value.trim();
+  const address=document.getElementById('reg-address').value.trim();
+  const city=document.getElementById('reg-city').value.trim();
+  const state=document.getElementById('reg-state').value.trim();
+  const pincode=document.getElementById('reg-pincode').value.trim();
+  const farm_land_acres=parseFloat(document.getElementById('reg-farm-acres').value)||0;
+  const farm_crop=document.getElementById('reg-farm-crop').value.trim();
+  const farm_location=document.getElementById('reg-farm-location').value.trim();
+  const farm_lat=parseFloat(document.getElementById('reg-farm-lat').value)||null;
+  const farm_lng=parseFloat(document.getElementById('reg-farm-lng').value)||null;
 
   let valid=true;
   if(!name){showFieldErr('reg-name','err-reg-name','Full name required');valid=false;}
@@ -577,12 +655,14 @@ async function registerAgent(){
   if(!/^\d{12}$/.test(aadhaar)){showFieldErr('reg-aadhaar','err-reg-aadhaar','Aadhaar must be 12 digits');valid=false;}
   if(!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(pan)){showFieldErr('reg-pan','err-reg-pan','Format: ABCDE1234F');valid=false;}
   if(password.length<6){showFieldErr('reg-password','err-reg-password','Min 6 characters');valid=false;}
+  if(!guardian_name){showFieldErr('reg-guardian-name','err-reg-guardian-name','Guardian name required');valid=false;}
   if(!valid) return;
 
   setLoading('btn-register',true,'Create Account →');
   try{
-    const res=await api('POST','/agents/register',{name,mobile,email,aadhaar,pan,referralCode:referralCode||null,password});
-    ['reg-name','reg-mobile','reg-email','reg-aadhaar','reg-pan','reg-referral','reg-password'].forEach(id=>{
+    const res=await api('POST','/agents/register',{name,mobile,email,aadhaar,pan,referralCode:referralCode||null,password,guardian_type,guardian_name,address,city,state,pincode,farm_land_acres,farm_crop,farm_location,farm_lat,farm_lng});
+    ['reg-name','reg-mobile','reg-email','reg-aadhaar','reg-pan','reg-referral','reg-password',
+     'reg-guardian-name','reg-address','reg-city','reg-state','reg-pincode','reg-farm-acres','reg-farm-crop','reg-farm-location','reg-farm-lat','reg-farm-lng'].forEach(id=>{
       const el=document.getElementById(id);if(el)el.value='';
     });
     document.getElementById('ok-reg-referral').classList.remove('show');
@@ -604,6 +684,7 @@ async function doLogout(){
   document.getElementById('app').style.display='none';
   document.getElementById('auth-screen').style.display='flex';
   document.getElementById('admin-pass').value='';
+  document.getElementById('agent-login-id').value='';
   selectRole('agent'); switchAuthTab('login');
 }
 
@@ -640,6 +721,7 @@ const AGENT_NAV=[
   {id:'matrix',icon:'🌐',label:'My Network'},
   {section:'Account'},
   {id:'profile',icon:'👤',label:'My Profile'},
+  {id:'bank',icon:'🏦',label:'Bank Details'},
 ];
 const ADMIN_NAV=[
   {section:'Platform'},
@@ -713,6 +795,7 @@ async function renderPage(page){
         case 'rank-journey': main.innerHTML=agentRankJourney(); break;
         case 'matrix':       main.innerHTML=agentMatrix();      break;
         case 'profile':      main.innerHTML=agentProfile();     break;
+        case 'bank':         main.innerHTML=agentBankPage();    break;
         default:             main.innerHTML=agentDashboard();
       }
     }
@@ -723,7 +806,7 @@ async function renderPage(page){
   }
 }
 
-// ── REFERRAL CODE COPY (used in profile & dashboard) ─────────────────
+// ── REFERRAL CODE / LINK COPY (used in profile & dashboard) ──────────
 function copyReferral(code){
   navigator.clipboard.writeText(code).then(()=>showToast('📋 Referral code copied!','success'))
     .catch(()=>{
@@ -731,6 +814,20 @@ function copyReferral(code){
       t.value=code; document.body.appendChild(t); t.select();
       document.execCommand('copy'); document.body.removeChild(t);
       showToast('📋 Referral code copied!','success');
+    });
+}
+function getReferralLink(mobile){
+  const base=window.location.origin+window.location.pathname;
+  return base+'?ref='+encodeURIComponent(mobile);
+}
+function copyReferralLink(mobile){
+  const link=getReferralLink(mobile);
+  navigator.clipboard.writeText(link).then(()=>showToast('🔗 Referral link copied!','success'))
+    .catch(()=>{
+      const t=document.createElement('textarea');
+      t.value=link; document.body.appendChild(t); t.select();
+      document.execCommand('copy'); document.body.removeChild(t);
+      showToast('🔗 Referral link copied!','success');
     });
 }
 
@@ -761,20 +858,27 @@ function agentDashboard(){
   <div class="page-content">
     ${a.investment===0?`<div class="card mb-4" style="border-color:var(--gold);background:var(--gold-light)"><div style="display:flex;align-items:center;gap:12px"><span style="font-size:28px">⚠️</span><div><div style="font-weight:700;color:var(--gold-bright)">No Active Package</div><div style="font-size:12px;color:var(--text-muted)">Contact your admin to activate an investment package.</div></div></div></div>`:''}
 
-    <!-- ── REFERRAL CODE CARD ── -->
+    <!-- ── REFERRAL CODE + LINK CARD ── -->
     <div class="card mb-4" style="border-color:rgba(46,160,67,0.3)">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
-        <div class="section-title" style="margin-bottom:0"><span>🔗</span> Your Referral Code</div>
+        <div class="section-title" style="margin-bottom:0"><span>🔗</span> Your Referral</div>
         <span class="tag tag-green">Share to earn recruits</span>
       </div>
-      <div class="referral-box">
-        <div>
-          <div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Your mobile = your referral code</div>
+      <div class="referral-box" style="margin-bottom:8px">
+        <div style="flex:1">
+          <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Referral Code (your mobile)</div>
           <div class="referral-code">${a.mobile||'—'}</div>
         </div>
-        <button class="referral-copy-btn" onclick="copyReferral('${a.mobile||''}')">📋 Copy</button>
+        <button class="referral-copy-btn" onclick="copyReferral('${a.mobile||''}')">📋 Copy Code</button>
       </div>
-      <div style="font-size:12px;color:var(--text-muted);margin-top:8px">Share this code with prospects. When they register using your mobile number, they'll be linked to your network automatically.</div>
+      <div class="referral-box" style="background:linear-gradient(135deg,rgba(31,111,235,0.1),rgba(46,160,67,0.06));border-color:rgba(31,111,235,0.35)">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Shareable Registration Link</div>
+          <div style="font-size:12px;color:#58a6ff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px" id="ref-link-preview-dash">${getReferralLink(a.mobile||'')}</div>
+        </div>
+        <button class="referral-copy-btn" style="background:var(--blue)" onclick="copyReferralLink('${a.mobile||''}')">🔗 Copy Link</button>
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:8px">Send the <strong style="color:#58a6ff">link</strong> to recruits — it opens registration with your code pre-filled. They appear in your <strong style="color:var(--text)">My Network</strong> once approved.</div>
     </div>
 
     <div class="grid-4 mb-4">
@@ -1049,6 +1153,37 @@ function agentMatrix(){
   </div>`;
 }
 
+function agentBankPage(){
+  const a=agentData;
+  return `
+  <div class="page-header">
+    <div><div class="page-title">Bank Details</div><div class="page-subtitle">Payout account information</div></div>
+    <button class="btn btn-secondary btn-sm" onclick="showBankModal()">${a.bank_account?'&#9998; Update Bank':'+ Add Bank Account'}</button>
+  </div>
+  <div class="page-content">
+    <div class="card" style="border-color:rgba(31,111,235,0.35)">
+      ${a.bank_account?`
+      <div style="padding:14px;background:rgba(31,111,235,0.08);border:1px solid rgba(31,111,235,0.25);border-radius:10px;margin-bottom:16px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:24px">&#127970;</span>
+        <div><div style="font-weight:700;color:#58a6ff">Bank Account Linked</div><div style="font-size:12px;color:var(--text-muted)">Your payouts will be credited to this account</div></div>
+      </div>
+      <div class="grid-2">
+        ${[['Account Holder',a.bank_holder||a.name],['Bank Name',a.bank_name||'&#8212;'],['Account Number',a.bank_account],['IFSC Code',a.bank_ifsc||'&#8212;'],['Branch',a.bank_branch||'&#8212;'],['Account Status','<span class="tag tag-green">&#10003; Active</span>']].map(([k,v])=>`<div style="padding:14px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px">${k}</div><div style="font-weight:600;font-size:14px">${v}</div></div>`).join('')}
+      </div>`:`
+      <div style="text-align:center;padding:48px 20px">
+        <div style="font-size:56px;margin-bottom:16px">&#127970;</div>
+        <div style="font-size:18px;font-weight:700;margin-bottom:6px">No Bank Account Added</div>
+        <div style="color:var(--text-muted);font-size:13px;margin-bottom:20px">Add your bank account to receive payouts directly.</div>
+        <button class="btn btn-primary" onclick="showBankModal()">+ Add Bank Account</button>
+      </div>`}
+    </div>
+    <div class="card mt-4" style="border-color:rgba(212,160,23,0.25)">
+      <div class="section-title"><span>&#8505;</span> Important Notes</div>
+      ${['Ensure your account details match your KYC documents.','IFSC code must be accurate for successful transfers.','Contact admin if you face any issues with payouts.','Bank details can be updated anytime from this page.'].map(n=>`<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--gold-bright);flex-shrink:0">&#9888;</span>${n}</div>`).join('')}
+    </div>
+  </div>`;
+}
+
 function agentProfile(){
   const a=agentData;
   return `
@@ -1060,17 +1195,26 @@ function agentProfile(){
 
     <!-- ── REFERRAL CODE ── -->
     <div class="card mb-4" style="border-color:rgba(46,160,67,0.3)">
-      <div class="section-title"><span>🔗</span> Your Referral Code</div>
-      <div class="referral-box">
-        <div>
-          <div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Share this with anyone who wants to join under you</div>
+      <div class="section-title"><span>🔗</span> Your Referral</div>
+      <!-- Code row -->
+      <div class="referral-box" style="margin-bottom:8px">
+        <div style="flex:1">
+          <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Referral Code (your mobile)</div>
           <div class="referral-code">${a.mobile||'—'}</div>
         </div>
         <button class="referral-copy-btn" onclick="copyReferral('${a.mobile||''}')">📋 Copy Code</button>
       </div>
-      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+      <!-- Link row -->
+      <div class="referral-box" style="background:linear-gradient(135deg,rgba(31,111,235,0.1),rgba(46,160,67,0.06));border-color:rgba(31,111,235,0.35);margin-bottom:10px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Shareable Registration Link</div>
+          <div style="font-size:12px;color:#58a6ff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px">${getReferralLink(a.mobile||'')}</div>
+        </div>
+        <button class="referral-copy-btn" style="background:var(--blue)" onclick="copyReferralLink('${a.mobile||''}')">🔗 Copy Link</button>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
         <div style="padding:8px 12px;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--text-muted);flex:1;min-width:200px">
-          📱 <strong style="color:var(--text)">WhatsApp:</strong> "Join WEETALSHI Energy! Use my referral code <strong style="color:var(--green-bright)">${a.mobile||''}</strong> when registering."
+          📱 <strong style="color:var(--text)">WhatsApp tip:</strong> Share the link above — when they tap it, the registration form opens with your referral already filled in! They'll appear in <strong style="color:var(--green-bright)">My Network</strong> once approved.
         </div>
       </div>
     </div>
@@ -1100,6 +1244,53 @@ function agentProfile(){
       <div class="grid-4">
         ${[{label:'Package',val:getPkg(a.package_id).name,color:getPkg(a.package_id).color},{label:'Investment',val:fmtMoney(a.investment),color:'var(--green-bright)'},{label:'Total Earned',val:fmtMoney(a.total_earnings),color:'var(--gold-bright)'},{label:'Network',val:downlineData.length+' direct',color:'var(--text)'}].map(s=>`<div style="padding:12px;background:var(--surface2);border-radius:10px;text-align:center"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px">${s.label}</div><div style="font-size:16px;font-weight:800;color:${s.color}">${s.val}</div></div>`).join('')}
       </div>
+    </div>
+
+    <!-- PERSONAL DETAILS -->
+    <div class="grid-2 mb-4">
+      <div class="card">
+        <div class="section-title"><span>&#128106;</span> Family Details</div>
+        ${[['Guardian Type',(a.guardian_type||'father').charAt(0).toUpperCase()+(a.guardian_type||'father').slice(1)],['Guardian Name',a.guardian_name||'Not provided']].map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)"><span class="text-muted">${k}</span><strong>${v}</strong></div>`).join('')}
+        <div style="margin-top:10px;padding:8px 10px;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--text-muted)">Contact admin to update family details.</div>
+      </div>
+      <div class="card">
+        <div class="section-title"><span>&#128205;</span> Address</div>
+        ${a.address?`<div style="font-size:13px;line-height:1.7">${[a.address,a.city,a.state,a.pincode].filter(Boolean).join(', ')}</div>`:'<div class="text-muted" style="font-size:13px">No address on record</div>'}
+      </div>
+    </div>
+
+    ${(a.farm_land_acres>0||a.farm_crop||a.farm_location||a.farm_lat||a.farm_lng)?`
+    <div class="card mb-4" style="border-color:rgba(13,148,136,0.35)">
+      <div class="section-title"><span>&#127806;</span> Farm Details</div>
+      <div class="grid-3">
+        ${[{label:'Land (Acres)',val:(a.farm_land_acres||0)+' acres',show:a.farm_land_acres>0},{label:'Main Crop',val:a.farm_crop||'&#8212;',show:true},{label:'Farm Location',val:a.farm_location||'&#8212;',show:true}].filter(x=>x.show).map(s=>`<div style="padding:12px;background:var(--surface2);border-radius:10px"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">${s.label}</div><div style="font-weight:700;color:#2dd4bf">${s.val}</div></div>`).join('')}
+      </div>
+      ${(a.farm_lat||a.farm_lng)?`
+      <div style="margin-top:12px;padding:12px;background:rgba(13,148,136,0.08);border:1px solid rgba(13,148,136,0.25);border-radius:10px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#2dd4bf;margin-bottom:8px">📍 GPS Coordinates</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:120px"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Latitude</div><div class="mono" style="font-weight:700;color:var(--text)">${a.farm_lat!=null?Number(a.farm_lat).toFixed(6):'—'}</div></div>
+          <div style="flex:1;min-width:120px"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Longitude</div><div class="mono" style="font-weight:700;color:var(--text)">${a.farm_lng!=null?Number(a.farm_lng).toFixed(6):'—'}</div></div>
+          <div style="display:flex;align-items:flex-end"><a href="https://maps.google.com/?q=${a.farm_lat},${a.farm_lng}" target="_blank" class="btn btn-secondary btn-xs">🗺️ View Map</a></div>
+        </div>
+      </div>`:''}
+    </div>`:''}
+
+    <div class="card" style="border-color:rgba(31,111,235,0.3)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div class="section-title" style="margin-bottom:0"><span>&#127970;</span> Bank Details</div>
+        <button class="btn btn-secondary btn-sm" onclick="showBankModal()">${a.bank_account?'&#9999;&#65039; Update':'&#9999;&#65039; Add Bank'}</button>
+      </div>
+      ${a.bank_account?`
+      <div class="grid-2">
+        ${[['Account Holder',a.bank_holder||a.name],['Bank Name',a.bank_name||'&#8212;'],['Account Number',a.bank_account?'&bull;&bull;&bull;&bull;'+a.bank_account.slice(-4):'&#8212;'],['IFSC Code',a.bank_ifsc||'&#8212;'],['Branch',a.bank_branch||'&#8212;']].map(([k,v])=>`<div style="padding:10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">${k}</div><div style="font-weight:600">${v}</div></div>`).join('')}
+      </div>
+      <div style="margin-top:10px;padding:8px 10px;background:rgba(31,111,235,0.08);border:1px solid rgba(31,111,235,0.25);border-radius:8px;font-size:12px;color:#58a6ff">Bank details saved for payout processing.</div>`:`
+      <div style="padding:24px;text-align:center;color:var(--text-muted)">
+        <div style="font-size:32px;margin-bottom:8px">&#127970;</div>
+        <div style="font-size:13px">No bank details added yet.</div>
+        <div style="font-size:12px;margin-top:4px">Add your bank account for receiving payouts.</div>
+      </div>`}
     </div>
   </div>`;
 }
@@ -1149,11 +1340,14 @@ async function adminRegistrations(){
     <div class="card mb-4">
       <div class="section-title"><span>📝</span> Pending Registrations (${pending.length})</div>
       <div class="table-wrap"><table>
-        <thead><tr><th>Name</th><th>Mobile / Referral</th><th>Email</th><th>Aadhaar</th><th>PAN</th><th>Referred By</th><th>Applied</th><th>Actions</th></tr></thead>
+        <thead><tr><th>Name</th><th>Mobile / Referral</th><th>Email</th><th>Guardian</th><th>Address</th><th>Farm</th><th>Aadhaar</th><th>PAN</th><th>Sponsor</th><th>Applied</th><th>Actions</th></tr></thead>
         <tbody>${pending.map(r=>`<tr>
           <td><div style="display:flex;align-items:center;gap:8px">${avatarHtml(r.name,0,28)}<div><div style="font-weight:600">${r.name}</div><div style="font-size:10px;color:var(--text-muted)">${r.id}</div></div></div></td>
-          <td><div class="mono" style="font-size:12px">${r.mobile||'—'}</div><div style="font-size:10px;color:var(--green-bright)">= Referral Code</div></td>
+          <td><div class="mono" style="font-size:12px">${r.mobile||'—'}</div><div style="font-size:10px;color:var(--green-bright)">= Referral Code</div>${r.mobile?`<button onclick="copyReferralLink('${r.mobile}')" style="margin-top:3px;background:none;border:1px solid rgba(31,111,235,0.4);border-radius:5px;cursor:pointer;font-size:10px;color:#58a6ff;padding:2px 6px">🔗 Copy Link</button>`:''}</td>
           <td style="font-size:12px">${r.email}</td>
+          <td style="font-size:12px;color:var(--text-muted)">${r.guardian_name?`<div style="font-weight:600;color:var(--text)">${r.guardian_name}</div><div style="font-size:10px">${(r.guardian_type||'father').charAt(0).toUpperCase()+(r.guardian_type||'father').slice(1)}</div>`:'—'}</td>
+          <td style="font-size:12px;color:var(--text-muted)">${[r.address,r.city,r.state,r.pincode].filter(Boolean).join(', ')||'—'}</td>
+          <td style="font-size:12px;color:var(--text-muted)">${r.farm_land_acres>0||r.farm_crop?`${r.farm_land_acres||0}ac ${r.farm_crop||''}`.trim():'—'}${r.farm_lat!=null?`<div style="font-size:10px;color:#2dd4bf" class="mono">${Number(r.farm_lat).toFixed(4)}, ${Number(r.farm_lng).toFixed(4)}</div>`:''}</td>
           <td class="mono" style="font-size:12px">${r.aadhaar?r.aadhaar.replace(/(\d{4})(\d{4})(\d{4})/,'$1 $2 $3'):'—'}</td>
           <td class="mono" style="font-size:12px">${r.pan||'—'}</td>
           <td style="font-size:12px;color:var(--text-muted)">${r.sponsor_id||'<span style="color:var(--text-dim)">None</span>'}</td>
@@ -1410,9 +1604,53 @@ function editAgentModal(agentId){
   const a=agentCache[agentId];
   if(!a){showToast('Agent data not loaded','error');return;}
   document.getElementById('modal-content').innerHTML=`
-    <div class="modal-title">Edit Agent: ${a.name}</div>
+    <div class="modal-title" style="display:flex;justify-content:space-between;align-items:center">
+      <span>&#9998; Edit Agent: ${a.name}</span>
+      <button class="btn btn-danger btn-sm" onclick="confirmDeleteAgent('${agentId}','${a.name.replace(/'/g,"\\'")}')">&#128465; Delete Agent</button>
+    </div>
+    <div style="padding:8px 10px;background:rgba(212,160,23,0.1);border:1px solid rgba(212,160,23,0.3);border-radius:8px;margin-bottom:14px;font-size:11px;color:var(--gold-bright);font-weight:600">&#9888; Admin — all fields editable</div>
+
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin:10px 0 8px">Personal Info</div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label">Investment (₹)</label><input type="number" class="form-input" id="m-invest" value="${a.investment}" min="0"></div>
+      <div class="form-group"><label class="form-label">Full Name</label><input type="text" class="form-input" id="m-name" value="${a.name}"></div>
+      <div class="form-group"><label class="form-label">Mobile</label><input type="tel" class="form-input" id="m-mobile" value="${a.mobile||''}" maxlength="10"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="m-email" value="${a.email}"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Aadhaar</label><input type="text" class="form-input" id="m-aadhaar" value="${a.aadhaar||''}" maxlength="12"></div>
+      <div class="form-group"><label class="form-label">PAN</label><input type="text" class="form-input" id="m-pan" value="${a.pan||''}" maxlength="10" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Guardian Type</label><select class="form-select" id="m-guardian-type">
+        <option value="father" ${(a.guardian_type||'father')==='father'?'selected':''}>Father</option>
+        <option value="husband" ${a.guardian_type==='husband'?'selected':''}>Husband</option>
+        <option value="other" ${a.guardian_type==='other'?'selected':''}>Other</option>
+      </select></div>
+      <div class="form-group"><label class="form-label">Guardian Name</label><input type="text" class="form-input" id="m-guardian-name" value="${a.guardian_name||''}" placeholder="Father / Husband name"></div>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin:10px 0 8px">Address</div>
+    <div class="form-group"><label class="form-label">Street / Colony</label><input type="text" class="form-input" id="m-address" value="${a.address||''}"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">City</label><input type="text" class="form-input" id="m-city" value="${a.city||''}"></div>
+      <div class="form-group"><label class="form-label">State</label><input type="text" class="form-input" id="m-state" value="${a.state||''}"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Pincode</label><input type="text" class="form-input" id="m-pincode" value="${a.pincode||''}" maxlength="6"></div>
+
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin:10px 0 8px">Farm Details</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Land (Acres)</label><input type="number" class="form-input" id="m-farm-acres" value="${a.farm_land_acres||0}" min="0" step="0.1"></div>
+      <div class="form-group"><label class="form-label">Main Crop</label><input type="text" class="form-input" id="m-farm-crop" value="${a.farm_crop||''}" placeholder="Wheat, Rice..."></div>
+    </div>
+    <div class="form-group"><label class="form-label">Farm Location / Village</label><input type="text" class="form-input" id="m-farm-location" value="${a.farm_location||''}" placeholder="Village / Tehsil / District"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Latitude</label><input type="number" class="form-input" id="m-farm-lat" value="${a.farm_lat||''}" placeholder="e.g. 26.9124" step="any" min="-90" max="90"></div>
+      <div class="form-group"><label class="form-label">Longitude</label><input type="number" class="form-input" id="m-farm-lng" value="${a.farm_lng||''}" placeholder="e.g. 75.7873" step="any" min="-180" max="180"></div>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin:10px 0 8px">Financial Settings</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Investment (&#8377;)</label><input type="number" class="form-input" id="m-invest" value="${a.investment}" min="0"></div>
       <div class="form-group"><label class="form-label">Package</label><select class="form-select" id="m-pkg">${PACKAGES.map(p=>`<option value="${p.id}" ${p.id===a.package_id?'selected':''}>${p.name}</option>`).join('')}</select></div>
     </div>
     <div class="form-row">
@@ -1420,8 +1658,8 @@ function editAgentModal(agentId){
       <div class="form-group"><label class="form-label">Direct Recruits</label><input type="number" class="form-input" id="m-rec" value="${a.direct_recruits}" min="0"></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label">Self Top-up (₹)</label><input type="number" class="form-input" id="m-topup" value="${a.self_topup}" min="0"></div>
-      <div class="form-group"><label class="form-label">Direct Business (₹)</label><input type="number" class="form-input" id="m-biz" value="${a.direct_business}" min="0"></div>
+      <div class="form-group"><label class="form-label">Self Top-up (&#8377;)</label><input type="number" class="form-input" id="m-topup" value="${a.self_topup}" min="0"></div>
+      <div class="form-group"><label class="form-label">Direct Business (&#8377;)</label><input type="number" class="form-input" id="m-biz" value="${a.direct_business}" min="0"></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Booster</label><select class="form-select" id="m-boo"><option value="1" ${a.booster_active?'selected':''}>Active</option><option value="0" ${!a.booster_active?'selected':''}>Inactive</option></select></div>
@@ -1430,34 +1668,61 @@ function editAgentModal(agentId){
     <div class="form-group"><label class="form-label">Transaction Note (optional)</label><input type="text" class="form-input" id="m-txnote" placeholder="e.g. Manual adjustment"></div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveAgent('${agentId}')">Save Changes</button>
+      <button class="btn btn-primary" onclick="saveAgent('${agentId}')">Save All Changes</button>
     </div>`;
   openModal();
 }
 
 async function saveAgent(id){
+  const g=n=>document.getElementById(n);
   const payload={
-    investment:     parseFloat(document.getElementById('m-invest').value)||0,
-    packageId:      document.getElementById('m-pkg').value,
-    rankId:         parseInt(document.getElementById('m-rank').value),
-    directRecruits: parseInt(document.getElementById('m-rec').value)||0,
-    selfTopup:      parseFloat(document.getElementById('m-topup').value)||0,
-    directBusiness: parseFloat(document.getElementById('m-biz').value)||0,
-    boosterActive:  document.getElementById('m-boo').value==='1',
-    boosterMonths:  parseInt(document.getElementById('m-boomth').value)||0,
-    txNote:         document.getElementById('m-txnote').value.trim(),
+    name:           g('m-name')?.value.trim()||undefined,
+    email:          g('m-email')?.value.trim().toLowerCase()||undefined,
+    mobile:         g('m-mobile')?.value.trim()||undefined,
+    aadhaar:        g('m-aadhaar')?.value.trim()||undefined,
+    pan:            g('m-pan')?.value.trim().toUpperCase()||undefined,
+    guardian_type:  g('m-guardian-type')?.value||undefined,
+    guardian_name:  g('m-guardian-name')?.value.trim()||undefined,
+    address:        g('m-address')?.value.trim()||undefined,
+    city:           g('m-city')?.value.trim()||undefined,
+    state:          g('m-state')?.value.trim()||undefined,
+    pincode:        g('m-pincode')?.value.trim()||undefined,
+    farm_land_acres:parseFloat(g('m-farm-acres')?.value)||0,
+    farm_crop:      g('m-farm-crop')?.value.trim()||undefined,
+    farm_location:  g('m-farm-location')?.value.trim()||undefined,
+    farm_lat:       g('m-farm-lat')?.value!==''?parseFloat(g('m-farm-lat')?.value)||null:null,
+    farm_lng:       g('m-farm-lng')?.value!==''?parseFloat(g('m-farm-lng')?.value)||null:null,
+    investment:     parseFloat(g('m-invest').value)||0,
+    packageId:      g('m-pkg').value,
+    rankId:         parseInt(g('m-rank').value),
+    directRecruits: parseInt(g('m-rec').value)||0,
+    selfTopup:      parseFloat(g('m-topup').value)||0,
+    directBusiness: parseFloat(g('m-biz').value)||0,
+    boosterActive:  g('m-boo').value==='1',
+    boosterMonths:  parseInt(g('m-boomth').value)||0,
+    txNote:         g('m-txnote').value.trim(),
   };
   try{
     await api('PATCH',`/admin/agents/${id}`,payload);
     if(agentCache[id]) Object.assign(agentCache[id],{
+      name:payload.name||agentCache[id].name,
+      email:payload.email||agentCache[id].email,
+      mobile:payload.mobile||agentCache[id].mobile,
+      aadhaar:payload.aadhaar||agentCache[id].aadhaar,
+      pan:payload.pan||agentCache[id].pan,
+      guardian_type:payload.guardian_type,guardian_name:payload.guardian_name,
+      address:payload.address,city:payload.city,state:payload.state,pincode:payload.pincode,
+      farm_land_acres:payload.farm_land_acres,farm_crop:payload.farm_crop,farm_location:payload.farm_location,
+      farm_lat:payload.farm_lat,farm_lng:payload.farm_lng,
       investment:payload.investment,package_id:payload.packageId,
       rank_id:payload.rankId,direct_recruits:payload.directRecruits,
       self_topup:payload.selfTopup,direct_business:payload.directBusiness,
       booster_active:payload.boosterActive,booster_months:payload.boosterMonths,
     });
-    closeModal(); showToast('✅ Agent updated','success'); renderPage(activePage);
+    closeModal(); showToast('&#9989; Agent updated','success'); renderPage(activePage);
   } catch(e){showToast(e.error||'Failed','error');}
 }
+
 
 function showEditProfileModal(){
   const a=agentData;
@@ -1504,6 +1769,53 @@ function exportCommissionsCSV(){
   showToast('📥 CSV downloaded','success');
 }
 
+function showBankModal(){
+  const a=agentData;
+  document.getElementById('modal-content').innerHTML=`
+    <div class="modal-title">&#127970; Bank Account Details</div>
+    <div style="padding:10px 12px;background:rgba(31,111,235,0.08);border:1px solid rgba(31,111,235,0.25);border-radius:8px;margin-bottom:14px;font-size:12px;color:#58a6ff">
+      &#128274; Your bank details are stored securely and used only for payout processing.
+    </div>
+    <div class="form-group"><label class="form-label">Account Holder Name *</label><input type="text" class="form-input" id="bk-holder" value="${a.bank_holder||a.name||''}" placeholder="Full name as per bank"></div>
+    <div class="form-group"><label class="form-label">Bank Name *</label><input type="text" class="form-input" id="bk-name" value="${a.bank_name||''}" placeholder="e.g. State Bank of India"></div>
+    <div class="form-group"><label class="form-label">Account Number *</label><input type="text" class="form-input" id="bk-account" value="${a.bank_account||''}" placeholder="Account number" inputmode="numeric"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">IFSC Code *</label><input type="text" class="form-input" id="bk-ifsc" value="${a.bank_ifsc||''}" placeholder="e.g. SBIN0001234" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
+      <div class="form-group"><label class="form-label">Branch</label><input type="text" class="form-input" id="bk-branch" value="${a.bank_branch||''}" placeholder="Branch name"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveBankDetails()">Save Bank Details</button>
+    </div>`;
+  openModal();
+}
+
+async function saveBankDetails(){
+  const holder=document.getElementById('bk-holder').value.trim();
+  const bname=document.getElementById('bk-name').value.trim();
+  const account=document.getElementById('bk-account').value.trim();
+  const ifsc=document.getElementById('bk-ifsc').value.trim().toUpperCase();
+  const branch=document.getElementById('bk-branch').value.trim();
+  if(!holder||!bname||!account||!ifsc){showToast('Account holder, bank name, account number and IFSC are required','error');return;}
+  try{
+    await api('PATCH','/agents/me/bank',{bank_holder:holder,bank_name:bname,bank_account:account,bank_ifsc:ifsc,bank_branch:branch});
+    agentData.bank_holder=holder; agentData.bank_name=bname;
+    agentData.bank_account=account; agentData.bank_ifsc=ifsc; agentData.bank_branch=branch;
+    closeModal(); showToast('&#127970; Bank details saved!','success'); renderPage('profile');
+  } catch(e){showToast(e.error||'Failed to save bank details','error');}
+}
+
+async function confirmDeleteAgent(agentId,agentName){
+  closeModal();
+  if(!confirm('DELETE AGENT: '+agentName+'\n\nThis will permanently remove all their data, transactions and downline links.\nThis action cannot be undone!')) return;
+  try{
+    await api('DELETE','/admin/agents/'+agentId);
+    delete agentCache[agentId];
+    showToast('&#128465; Agent '+agentName+' deleted','error');
+    renderPage(activePage);
+  } catch(e){showToast(e.error||'Delete failed','error');}
+}
+
 function openModal(){document.getElementById('modal-overlay').classList.add('show');}
 function closeModal(){document.getElementById('modal-overlay').classList.remove('show');}
 function handleModalClick(e){if(e.target.id==='modal-overlay')closeModal();}
@@ -1519,6 +1831,18 @@ function showToast(msg,type='default'){
 
 async function boot(){
   renderAuthInfoPanel();
+
+  // ── Auto-fill referral from URL ?ref=MOBILE ──────────────────────
+  const urlParams=new URLSearchParams(window.location.search);
+  const refCode=urlParams.get('ref');
+  if(refCode){
+    switchAuthTab('register');
+    const refInput=document.getElementById('reg-referral');
+    if(refInput){ refInput.value=refCode; onReferralInput(refCode); }
+    // Clean the URL without reloading
+    history.replaceState({},'',window.location.pathname);
+  }
+
   try{
     const res=await api('GET','/auth/me');
     if(res.role==='admin'){
@@ -1532,6 +1856,27 @@ async function boot(){
   } finally{
     document.getElementById('global-loader').style.display='none';
   }
+}
+
+function detectFarmLocation(){
+  if(!navigator.geolocation){showToast('Geolocation not supported by your browser','error');return;}
+  showToast('📍 Detecting location…');
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      const lat=pos.coords.latitude.toFixed(6);
+      const lng=pos.coords.longitude.toFixed(6);
+      const latEl=document.getElementById('reg-farm-lat');
+      const lngEl=document.getElementById('reg-farm-lng');
+      if(latEl) latEl.value=lat;
+      if(lngEl) lngEl.value=lng;
+      showToast(`📍 Location set: ${lat}, ${lng}`,'success');
+    },
+    err=>{
+      const msgs={1:'Location permission denied.',2:'Location unavailable.',3:'Location request timed out.'};
+      showToast(msgs[err.code]||'Could not detect location','error');
+    },
+    {enableHighAccuracy:true,timeout:10000}
+  );
 }
 
 boot();

@@ -75,7 +75,23 @@ def init_db():
             sponsor_id TEXT,
             status TEXT DEFAULT 'pending',
             join_date TEXT DEFAULT CURRENT_DATE,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            guardian_type TEXT DEFAULT 'father',
+            guardian_name TEXT,
+            address TEXT,
+            city TEXT,
+            state TEXT,
+            pincode TEXT,
+            farm_land_acres REAL DEFAULT 0,
+            farm_crop TEXT,
+            farm_location TEXT,
+            farm_lat REAL,
+            farm_lng REAL,
+            bank_name TEXT,
+            bank_account TEXT,
+            bank_ifsc TEXT,
+            bank_branch TEXT,
+            bank_holder TEXT
         );
         CREATE TABLE IF NOT EXISTS transactions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -93,6 +109,31 @@ def init_db():
             PRIMARY KEY(sponsor_id, agent_id)
         );
     """)
+
+    # Add new columns if they don't exist (for existing DBs)
+    new_cols = [
+        ("guardian_type", "TEXT DEFAULT 'father'"),
+        ("guardian_name", "TEXT"),
+        ("address", "TEXT"),
+        ("city", "TEXT"),
+        ("state", "TEXT"),
+        ("pincode", "TEXT"),
+        ("farm_land_acres", "REAL DEFAULT 0"),
+        ("farm_crop", "TEXT"),
+        ("farm_location", "TEXT"),
+        ("farm_lat", "REAL"),
+        ("farm_lng", "REAL"),
+        ("bank_name", "TEXT"),
+        ("bank_account", "TEXT"),
+        ("bank_ifsc", "TEXT"),
+        ("bank_branch", "TEXT"),
+        ("bank_holder", "TEXT"),
+    ]
+    existing = [row[1] for row in conn.execute("PRAGMA table_info(agents)").fetchall()]
+    for col, ctype in new_cols:
+        if col not in existing:
+            conn.execute(f"ALTER TABLE agents ADD COLUMN {col} {ctype}")
+    conn.commit()  # commit schema changes before inserting data
 
     if not conn.execute("SELECT id FROM admins WHERE username='admin'").fetchone():
         conn.execute("INSERT INTO admins(username,password) VALUES(?,?)", ('admin', hp('admin123')))
@@ -256,6 +297,7 @@ def login():
     else:
         aid   = str(d.get('agent_id',  '') or '').strip()
         ident = str(d.get('identifier','') or '').strip()
+        pw    = str(d.get('password',  '') or '')
         conn  = get_db()
         ag    = None
         if aid:
@@ -270,6 +312,9 @@ def login():
         conn.close()
         if not ag:
             return jsonify({'error': 'Agent not found or not approved'}), 401
+        # Only enforce password when an identifier (not demo agent_id shortcut) was used
+        if ident and hp(pw) != ag['password']:
+            return jsonify({'error': 'Invalid password'}), 401
         session.clear()
         session['user_id'] = ag['id']
         session['role']    = 'agent'
@@ -316,13 +361,24 @@ def verify_referral():
 def register():
     d = request.get_json(silent=True) or {}
 
-    name     = str(d.get('name')        or '').strip()
-    mobile   = str(d.get('mobile')      or '').strip()
-    email    = str(d.get('email')       or '').strip().lower()
-    aadhaar  = str(d.get('aadhaar')     or '').strip() or None
-    pan      = str(d.get('pan')         or '').strip().upper() or None
-    referral = str(d.get('referralCode')or '').strip() or None
-    password = str(d.get('password')    or '')
+    name          = str(d.get('name')           or '').strip()
+    mobile        = str(d.get('mobile')         or '').strip()
+    email         = str(d.get('email')          or '').strip().lower()
+    aadhaar       = str(d.get('aadhaar')        or '').strip() or None
+    pan           = str(d.get('pan')            or '').strip().upper() or None
+    referral      = str(d.get('referralCode')   or '').strip() or None
+    password      = str(d.get('password')       or '')
+    guardian_type = str(d.get('guardian_type')  or 'father').strip()
+    guardian_name = str(d.get('guardian_name')  or '').strip() or None
+    address       = str(d.get('address')        or '').strip() or None
+    city          = str(d.get('city')           or '').strip() or None
+    state         = str(d.get('state')          or '').strip() or None
+    pincode       = str(d.get('pincode')        or '').strip() or None
+    farm_acres    = float(d.get('farm_land_acres') or 0)
+    farm_crop     = str(d.get('farm_crop')      or '').strip() or None
+    farm_location = str(d.get('farm_location')  or '').strip() or None
+    farm_lat      = float(d['farm_lat'])  if d.get('farm_lat')  is not None and d.get('farm_lat')  != '' else None
+    farm_lng      = float(d['farm_lng'])  if d.get('farm_lng')  is not None and d.get('farm_lng')  != '' else None
 
     if not name:
         return jsonify({'error': 'Name required', 'field': 'name'}), 400
@@ -364,9 +420,11 @@ def register():
 
         aid = 'agent_' + datetime.now().strftime('%Y%m%d%H%M%S%f')
         conn.execute(
-            "INSERT INTO agents(id,name,email,mobile,aadhaar,pan,password,sponsor_id,status) "
-            "VALUES(?,?,?,?,?,?,?,?,?)",
-            (aid, name, email, mobile, aadhaar, pan, hp(password), sponsor_id, 'pending')
+            "INSERT INTO agents(id,name,email,mobile,aadhaar,pan,password,sponsor_id,status,"
+            "guardian_type,guardian_name,address,city,state,pincode,farm_land_acres,farm_crop,farm_location,farm_lat,farm_lng) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (aid, name, email, mobile, aadhaar, pan, hp(password), sponsor_id, 'pending',
+             guardian_type, guardian_name, address, city, state, pincode, farm_acres, farm_crop, farm_location, farm_lat, farm_lng)
         )
         conn.commit()
         return jsonify({'ok': True, 'sponsorName': sponsor_name})
@@ -429,6 +487,31 @@ def update_me():
     finally:
         conn.close()
 
+@app.route('/api/agents/me/bank', methods=['PATCH'])
+@login_required
+def update_bank():
+    if session.get('role') == 'admin':
+        return jsonify({'error': 'Admin cannot use agent route'}), 403
+    d           = request.get_json(silent=True) or {}
+    bank_name   = str(d.get('bank_name',   '') or '').strip() or None
+    bank_account= str(d.get('bank_account','') or '').strip() or None
+    bank_ifsc   = str(d.get('bank_ifsc',   '') or '').strip().upper() or None
+    bank_branch = str(d.get('bank_branch', '') or '').strip() or None
+    bank_holder = str(d.get('bank_holder', '') or '').strip() or None
+    conn = get_db()
+    try:
+        conn.execute(
+            "UPDATE agents SET bank_name=?,bank_account=?,bank_ifsc=?,bank_branch=?,bank_holder=? WHERE id=?",
+            (bank_name, bank_account, bank_ifsc, bank_branch, bank_holder, session['user_id'])
+        )
+        conn.commit()
+        return jsonify({'ok': True})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
+
 @app.route('/api/agents/me/promote', methods=['POST'])
 @login_required
 def promote_self():
@@ -483,6 +566,17 @@ def approve(aid):
         conn.close()
         return jsonify({'error': 'Not found'}), 404
     conn.execute("UPDATE agents SET status='approved' WHERE id=?", (aid,))
+    # Initialize self_topup from investment if not already set, and compute monthly earnings
+    invest = ag['investment'] or 0
+    if invest > 0:
+        ag_dict = dict(ag)
+        ag_dict['booster_active'] = bool(ag_dict.get('booster_active', 0))
+        mo = calc_monthly(ag_dict)
+        conn.execute(
+            "UPDATE agents SET self_topup=CASE WHEN self_topup=0 THEN ? ELSE self_topup END,"
+            "monthly_earnings=? WHERE id=?",
+            (invest, mo, aid)
+        )
     if ag['sponsor_id']:
         conn.execute(
             "INSERT OR IGNORE INTO downline(sponsor_id,agent_id,depth) VALUES(?,?,1)",
@@ -509,6 +603,30 @@ def reject(aid):
     conn.close()
     return jsonify({'ok': True})
 
+@app.route('/api/admin/agents/<aid>', methods=['DELETE'])
+@login_required
+@admin_required
+def delete_agent(aid):
+    conn = get_db()
+    ag = conn.execute("SELECT * FROM agents WHERE id=?", (aid,)).fetchone()
+    if not ag:
+        conn.close()
+        return jsonify({'error': 'Not found'}), 404
+    try:
+        sponsor_id = ag['sponsor_id']
+        conn.execute("DELETE FROM transactions WHERE agent_id=?", (aid,))
+        conn.execute("DELETE FROM downline WHERE agent_id=? OR sponsor_id=?", (aid, aid))
+        conn.execute("DELETE FROM agents WHERE id=?", (aid,))
+        if sponsor_id:
+            refresh_sponsor_stats(conn, sponsor_id)
+        conn.commit()
+        return jsonify({'ok': True})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
+
 @app.route('/api/admin/agents', methods=['POST'])
 @login_required
 @admin_required
@@ -522,6 +640,16 @@ def add_agent():
     pkg     = str(d.get('packageId', '') or 'starter')
     sponsor = str(d.get('sponsorId', '') or '').strip() or None
     invest  = float(d.get('investment') or 10000)
+    guardian_type = str(d.get('guardian_type','father') or 'father')
+    guardian_name = str(d.get('guardian_name','') or '').strip() or None
+    address       = str(d.get('address','') or '').strip() or None
+    city          = str(d.get('city','') or '').strip() or None
+    state         = str(d.get('state','') or '').strip() or None
+    pincode       = str(d.get('pincode','') or '').strip() or None
+    farm_acres    = float(d.get('farm_land_acres') or 0)
+    farm_crop     = str(d.get('farm_crop','') or '').strip() or None
+    farm_location = str(d.get('farm_location','') or '').strip() or None
+
     if not name or not email:
         return jsonify({'error': 'Name and email required'}), 400
     aid     = 'agent_' + datetime.now().strftime('%Y%m%d%H%M%S%f')
@@ -530,10 +658,13 @@ def add_agent():
     try:
         conn.execute(
             "INSERT INTO agents(id,name,email,mobile,aadhaar,pan,password,package_id,"
-            "investment,self_topup,monthly_earnings,sponsor_id,status) "
-            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,'approved')",
+            "investment,self_topup,monthly_earnings,sponsor_id,status,"
+            "guardian_type,guardian_name,address,city,state,pincode,farm_land_acres,farm_crop,farm_location) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,'approved',?,?,?,?,?,?,?,?,?)",
             (aid, name, email, mobile, aadhaar, pan, hp('temp123'),
-             pkg, invest, invest, monthly, sponsor)
+             pkg, invest, invest, monthly, sponsor,
+             guardian_type, guardian_name, address, city, state, pincode,
+             farm_acres, farm_crop, farm_location)
         )
         if sponsor:
             conn.execute(
@@ -563,22 +694,47 @@ def edit_agent(aid):
     if not ag:
         conn.close()
         return jsonify({'error': 'Not found'}), 404
-    invest = float(d.get('investment',     ag['investment']))
-    pkg    = str(d.get('packageId',        ag['package_id']))
-    rank   = int(d.get('rankId',           ag['rank_id']))
-    rec    = int(d.get('directRecruits',   ag['direct_recruits']))
-    topup  = float(d.get('selfTopup',      ag['self_topup']))
-    biz    = float(d.get('directBusiness', ag['direct_business']))
-    boo    = 1 if d.get('boosterActive') else 0
-    bmth   = int(d.get('boosterMonths',    ag['booster_months']))
-    note   = str(d.get('txNote', '') or '').strip()
-    mo     = calc_monthly({'investment': invest, 'rank_id': rank,
-                           'booster_active': boo, 'booster_months': bmth})
+
+    invest  = float(d.get('investment',     ag['investment']))
+    pkg     = str(d.get('packageId',        ag['package_id']))
+    rank    = int(d.get('rankId',           ag['rank_id']))
+    rec     = int(d.get('directRecruits',   ag['direct_recruits']))
+    topup   = float(d.get('selfTopup',      ag['self_topup']))
+    biz     = float(d.get('directBusiness', ag['direct_business']))
+    boo     = 1 if d.get('boosterActive') else 0
+    bmth    = int(d.get('boosterMonths',    ag['booster_months']))
+    note    = str(d.get('txNote', '') or '').strip()
+    # Personal info editable by admin
+    name    = str(d.get('name',   ag['name']   or '') or '').strip() or ag['name']
+    email   = str(d.get('email',  ag['email']  or '') or '').strip().lower() or ag['email']
+    mobile  = str(d.get('mobile', ag['mobile'] or '') or '').strip() or ag['mobile']
+    aadhaar = str(d.get('aadhaar',ag['aadhaar'] or '') or '').strip() or ag['aadhaar']
+    pan_val = str(d.get('pan',    ag['pan']    or '') or '').strip().upper() or ag['pan']
+    guardian_type = str(d.get('guardian_type', ag['guardian_type'] or 'father') or 'father')
+    guardian_name = str(d.get('guardian_name', ag['guardian_name'] or '') or '').strip() or ag['guardian_name']
+    address       = str(d.get('address',       ag['address']       or '') or '').strip() or ag['address']
+    city          = str(d.get('city',          ag['city']          or '') or '').strip() or ag['city']
+    state         = str(d.get('state',         ag['state']         or '') or '').strip() or ag['state']
+    pincode       = str(d.get('pincode',       ag['pincode']       or '') or '').strip() or ag['pincode']
+    farm_acres    = float(d.get('farm_land_acres', ag['farm_land_acres'] or 0))
+    farm_crop     = str(d.get('farm_crop',     ag['farm_crop']     or '') or '').strip() or ag['farm_crop']
+    farm_location = str(d.get('farm_location', ag['farm_location'] or '') or '').strip() or ag['farm_location']
+    farm_lat      = float(d['farm_lat'])  if d.get('farm_lat')  is not None and d.get('farm_lat')  != '' else ag['farm_lat']
+    farm_lng      = float(d['farm_lng'])  if d.get('farm_lng')  is not None and d.get('farm_lng')  != '' else ag['farm_lng']
+
+    mo = calc_monthly({'investment': invest, 'rank_id': rank,
+                       'booster_active': boo, 'booster_months': bmth})
     try:
         conn.execute(
             "UPDATE agents SET investment=?,package_id=?,rank_id=?,direct_recruits=?,"
-            "self_topup=?,direct_business=?,booster_active=?,booster_months=?,monthly_earnings=? WHERE id=?",
-            (invest, pkg, rank, rec, topup, biz, boo, bmth, mo, aid)
+            "self_topup=?,direct_business=?,booster_active=?,booster_months=?,monthly_earnings=?,"
+            "name=?,email=?,mobile=?,aadhaar=?,pan=?,"
+            "guardian_type=?,guardian_name=?,address=?,city=?,state=?,pincode=?,"
+            "farm_land_acres=?,farm_crop=?,farm_location=?,farm_lat=?,farm_lng=? WHERE id=?",
+            (invest, pkg, rank, rec, topup, biz, boo, bmth, mo,
+             name, email, mobile, aadhaar, pan_val,
+             guardian_type, guardian_name, address, city, state, pincode,
+             farm_acres, farm_crop, farm_location, farm_lat, farm_lng, aid)
         )
         if note:
             conn.execute(
@@ -697,11 +853,10 @@ def commissions():
 
 @app.route('/api/health')
 def health():
-    return jsonify({'status': 'ok', 'version': '2.0.0'})
+    return jsonify({'status': 'ok', 'version': '2.1.0'})
 
 
 # ── STARTUP ───────────────────────────────────────────────────────────
-# Called at import time so gunicorn also initializes the database
 init_db()
 
 # ── RUN ───────────────────────────────────────────────────────────────
