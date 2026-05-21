@@ -13,7 +13,8 @@ app.secret_key = 'weetalshi_dev_secret_2024'
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 
-DB_PATH = os.path.join(BASE_DIR, 'weetalshi.db')
+DB_PATH = os.environ.get('DB_PATH', os.path.join(BASE_DIR, 'weetalshi.db'))
+# On Render with persistent disk, set DB_PATH=/data/weetalshi.db via env or disk mount
 
 
 # ── CORS ─────────────────────────────────────────────────────────────
@@ -302,15 +303,21 @@ def login():
         ag    = None
         if aid:
             ag = conn.execute(
-                "SELECT * FROM agents WHERE id=? AND status='approved'", (aid,)
+                "SELECT * FROM agents WHERE id=?", (aid,)
             ).fetchone()
         elif ident:
             ag = conn.execute(
-                "SELECT * FROM agents WHERE (email=? OR mobile=?) AND status='approved'",
+                "SELECT * FROM agents WHERE (email=? OR mobile=?)",
                 (ident, ident)
             ).fetchone()
         conn.close()
         if not ag:
+            return jsonify({'error': 'Agent not found'}), 401
+        if ag['status'] == 'pending':
+            return jsonify({'error': 'Your account is pending admin approval'}), 401
+        if ag['status'] == 'rejected':
+            return jsonify({'error': 'Your account has been rejected. Please contact support'}), 401
+        if ag['status'] != 'approved':
             return jsonify({'error': 'Agent not found or not approved'}), 401
         # Only enforce password when an identifier (not demo agent_id shortcut) was used
         if ident and hp(pw) != ag['password']:

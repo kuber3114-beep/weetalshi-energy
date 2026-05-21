@@ -4,6 +4,12 @@ services:
     runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn server:app
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
+      - key: DB_PATH
+        value: /data/weetalshi.db
