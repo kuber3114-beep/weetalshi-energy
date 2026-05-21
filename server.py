@@ -14,7 +14,19 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 
 DB_PATH = os.environ.get('DB_PATH', os.path.join(BASE_DIR, 'weetalshi.db'))
-# On Render with persistent disk, set DB_PATH=/data/weetalshi.db via env or disk mount
+
+# ── AUTO-MIGRATE: if using a persistent disk path and the DB doesn't exist
+#    there yet, copy the bundled DB so all existing data is preserved on
+#    the very first deploy after adding the disk.
+_local_db = os.path.join(BASE_DIR, 'weetalshi.db')
+if DB_PATH != _local_db and not os.path.exists(DB_PATH):
+    import shutil as _shutil
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    if os.path.exists(_local_db):
+        _shutil.copy2(_local_db, DB_PATH)
+        print(f'[DB] Migrated existing DB from {_local_db} to {DB_PATH}')
+    else:
+        print(f'[DB] Fresh DB will be created at {DB_PATH}')
 
 
 # ── CORS ─────────────────────────────────────────────────────────────
