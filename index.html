@@ -286,6 +286,10 @@ td{padding:10px 12px;vertical-align:middle;}
             <label class="form-label">Mobile / Email <span style="color:var(--text-dim)">(or leave blank for demo)</span></label>
             <input type="text" class="form-input" id="agent-login-id" placeholder="Registered mobile or email">
           </div>
+          <div class="form-group" id="agent-password-group">
+            <label class="form-label">Password <span style="color:var(--text-dim)">(leave blank for demo accounts)</span></label>
+            <input type="password" class="form-input" id="agent-login-pass" placeholder="Your password">
+          </div>
         </div>
         <div id="admin-login-group" class="hidden">
           <div class="form-group">
@@ -616,8 +620,9 @@ async function doLogin(){
     } else {
       const agentId=document.getElementById('demo-user-select').value;
       const identifier=document.getElementById('agent-login-id').value.trim();
+      const agentPass=document.getElementById('agent-login-pass').value;
       const body={role:'agent'};
-      if(identifier) body.identifier=identifier;
+      if(identifier){body.identifier=identifier;body.password=agentPass;}
       else body.agent_id=agentId;
       const res=await api('POST','/auth/login',body);
       currentRole='agent'; currentUser=res.agent; agentData=res.agent;
@@ -685,6 +690,7 @@ async function doLogout(){
   document.getElementById('auth-screen').style.display='flex';
   document.getElementById('admin-pass').value='';
   document.getElementById('agent-login-id').value='';
+  document.getElementById('agent-login-pass').value='';
   selectRole('agent'); switchAuthTab('login');
 }
 
