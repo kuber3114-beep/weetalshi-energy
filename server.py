@@ -9,9 +9,12 @@ from functools import wraps
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__)
-app.secret_key = 'weetalshi_dev_secret_2024'
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.secret_key = os.environ.get('SECRET_KEY', 'weetalshi_dev_secret_2024')
+app.config['SESSION_COOKIE_SAMESITE']  = 'Lax'
+app.config['SESSION_COOKIE_HTTPONLY']  = True
+app.config['SESSION_COOKIE_SECURE']    = os.environ.get('RENDER') == 'true'  # HTTPS only on Render
+app.config['SESSION_PERMANENT']        = True
+app.config['PERMANENT_SESSION_LIFETIME'] = 60 * 60 * 24 * 30  # 30 days
 
 DB_PATH = os.environ.get('DB_PATH', os.path.join(BASE_DIR, 'weetalshi.db'))
 
@@ -304,6 +307,7 @@ def login():
         if not adm or hp(str(d.get('password', ''))) != adm['password']:
             return jsonify({'error': 'Invalid admin password'}), 401
         session.clear()
+        session.permanent = True
         session['user_id'] = 'admin'
         session['role']    = 'admin'
         return jsonify({'role': 'admin', 'name': 'Admin User'})
@@ -335,6 +339,7 @@ def login():
         if ident and hp(pw) != ag['password']:
             return jsonify({'error': 'Invalid password'}), 401
         session.clear()
+        session.permanent = True
         session['user_id'] = ag['id']
         session['role']    = 'agent'
         return jsonify({'role': 'agent', 'agent': a2d(ag)})

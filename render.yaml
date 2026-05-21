@@ -13,3 +13,7 @@ services:
         value: 3.11.0
       - key: DB_PATH
         value: /data/weetalshi.db
+      - key: RENDER
+        value: true
+      - key: SECRET_KEY
+        generateValue: true
